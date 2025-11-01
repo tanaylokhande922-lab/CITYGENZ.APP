@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "login-hero",
+      "description": "A modern city street with clean infrastructure.",
+      "imageUrl": "https://images.unsplash.com/photo-1461072492560-82b4f2ff2799?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtb2Rlcm4lMjBjaXR5fGVufDB8fHx8MTc2MTk0ODA1OXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern city"
+    }
+  ]
 }
