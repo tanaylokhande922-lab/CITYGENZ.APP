@@ -16,10 +16,12 @@ export function Logo() {
           strokeLinejoin="round"
           className="h-6 w-6"
         >
-          <path d="M8 3v18" />
-          <path d="M12 5v16" />
-          <path d="M16 8v13" />
-          <path d="M4 21h16" />
+          <path d="M2 22h20" />
+          <path d="M5 22V8l-3 3" />
+          <path d="M9 22V8l-3 3" />
+          <path d="M13 22V8l-3 3" />
+          <path d="M17 22V8l-3 3" />
+          <path d="M21 22V8l-3 3" />
         </svg>
       </div>
       <span className="text-xl font-bold tracking-tight text-foreground">
