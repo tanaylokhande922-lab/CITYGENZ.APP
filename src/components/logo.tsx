@@ -24,7 +24,7 @@ export function Logo() {
         </svg>
       </div>
       <span className="text-xl font-bold tracking-tight text-foreground">
-        CityZen
+        CityGenz
       </span>
     </Link>
   );

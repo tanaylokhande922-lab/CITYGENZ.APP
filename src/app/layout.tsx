@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'CityZen Reporting',
+  title: 'CityGenz Reporting',
   description: 'Report civic issues in your city.',
 };
 
