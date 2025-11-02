@@ -16,6 +16,7 @@ import { useUser } from "@/firebase";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { ADMIN_EMAIL } from "@/lib/constants";
+import { Loader2 } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -50,7 +51,8 @@ export default function DashboardLayout({
   if (isUserLoading || !user) {
     return (
         <div className="w-full h-screen flex items-center justify-center">
-            <p>Loading...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-2">Loading...</p>
         </div>
     );
   }

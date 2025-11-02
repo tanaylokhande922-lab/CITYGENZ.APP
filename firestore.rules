@@ -2,41 +2,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the requesting user is the owner of the document.
+    
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    /**
-     * @description Controls access to user profile documents and their subcollections.
-     * A user can read and update their own document and subcollections.
-     * A user can create documents in their 'reportedIssues' subcollection.
-     */
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'tanaylokhande922@gmail.com';
+    }
+
     match /users/{userId} {
       allow read, update: if isOwner(userId);
-
-      // This rule specifically allows a user to create a new issue report
-      // within their own 'reportedIssues' subcollection.
+      allow list: if isAdmin();
+      
       match /reportedIssues/{reportId} {
-        allow create: if isOwner(userId);
-        allow read, update: if isOwner(userId);
+        allow create, read, update, delete: if isOwner(userId);
       }
     }
 
-    /**
-     * @description Controls access to municipality worker profiles.
-     * For now, any authenticated user can read this data, but no one can write it.
-     */
     match /municipalityWorkers/{workerId} {
       allow get, list: if request.auth != null;
-      allow write: if false;
+      allow write: if false; 
     }
 
-    /**
-     * @description Controls access to issue priority documents.
-     * For now, this data is publicly readable, but no one can write it.
-     */
     match /issuePriorities/{issueId} {
       allow get, list: if true;
       allow write: if false;
