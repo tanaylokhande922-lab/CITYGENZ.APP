@@ -88,7 +88,16 @@ export default function ProfileSetupPage() {
         };
         
         // Use setDoc with merge to create or update
-        await setDoc(userDocRef, userData, { merge: true });
+        setDoc(userDocRef, userData, { merge: true }).catch(error => {
+            if (error.code === 'permission-denied') {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: userData,
+                }));
+            }
+        });
+
 
         // 3. Update Firebase Auth profile
         await updateProfile(auth.currentUser, {
@@ -106,19 +115,12 @@ export default function ProfileSetupPage() {
 
     } catch (error: any) {
         console.error("Profile update error:", error);
-        const userDocRef = doc(firestore, "users", user.uid);
-        if (error.code === 'permission-denied' || error.code === 'storage/unauthorized') {
-            const path = error.code === 'storage/unauthorized' ? `profile-pictures/${user.uid}` : userDocRef.path;
+        if (error.code === 'storage/unauthorized') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: path,
-                operation: 'update',
+                path: `profile-pictures/${user.uid}`,
+                operation: 'write',
                 requestResourceData: { displayName: data.displayName, photoURL: user.photoURL }
             }));
-             toast({
-                variant: "destructive",
-                title: "Permission Denied",
-                description: "You do not have permission to update the profile. Check security rules.",
-            });
         } else {
             toast({
                 variant: "destructive",
@@ -192,7 +194,7 @@ export default function ProfileSetupPage() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your full name" {...field} defaultValue={user?.displayName || ''} />
+                    <Input placeholder="Enter your full name" {...field} />
                   </FormControl>
                   <FormDescription>
                     This name will be displayed on your reports.
