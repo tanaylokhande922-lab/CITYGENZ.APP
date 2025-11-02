@@ -92,7 +92,8 @@ export default function ProfileSetupPage() {
             displayName: data.displayName,
             photoURL: photoURL,
         };
-        await updateDoc(userDocRef, updatedData).catch(error => {
+        await updateDoc(userDocRef, updatedData)
+          .catch(error => {
             if (error.code === 'permission-denied') {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: userDocRef.path,
@@ -100,6 +101,8 @@ export default function ProfileSetupPage() {
                     requestResourceData: updatedData
                 }));
             }
+            // Re-throw other errors to be caught by the outer catch block
+            throw error;
         });
         
         toast({
