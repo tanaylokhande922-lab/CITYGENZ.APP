@@ -10,15 +10,17 @@ service cloud.firestore {
 
     /**
      * @description Controls access to user profile documents and their subcollections.
-     * A user can read, create, update, and delete their own document and subcollections.
+     * A user can read and update their own document and subcollections.
+     * A user can create documents in their 'reportedIssues' subcollection.
      */
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, update: if isOwner(userId);
 
-      // Rules for the nested 'reportedIssues' subcollection.
-      // Inherits the ownership check from the parent.
+      // This rule specifically allows a user to create a new issue report
+      // within their own 'reportedIssues' subcollection.
       match /reportedIssues/{reportId} {
-        allow read, write: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow read, update: if isOwner(userId);
       }
     }
 
