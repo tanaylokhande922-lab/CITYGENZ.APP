@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User as UserIcon } from "lucide-react";
 import { ProfilePictures } from "@/lib/placeholder-images";
 import { cn } from "@/lib/utils";
+import { ADMIN_EMAIL } from "@/lib/constants";
 
 const profileFormSchema = z.object({
   displayName: z.string().min(3, {
@@ -50,7 +51,18 @@ export default function ProfileSetupPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedPfp, setSelectedPfp] = useState(user?.photoURL || ProfilePictures[0]?.imageUrl);
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
+  const adminPfp = ProfilePictures.find(p => p.id === 'pfp_admin');
+
+  const getDefaultPfp = () => {
+    if (isAdmin && adminPfp) {
+        return adminPfp.imageUrl;
+    }
+    return user?.photoURL || ProfilePictures.find(p => p.id === 'pfp1')?.imageUrl || ProfilePictures[0].imageUrl
+  }
+
+  const [selectedPfp, setSelectedPfp] = useState(getDefaultPfp());
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),

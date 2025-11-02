@@ -9,6 +9,10 @@
   ],
   "profilePictures": [
     {
+      "id": "pfp_admin",
+      "imageUrl": "https://storage.googleapis.com/aai-web-samples/profile-images/pfp_admin.png"
+    },
+    {
       "id": "pfp1",
       "imageUrl": "https://picsum.photos/seed/pfp1/200/200"
     },
