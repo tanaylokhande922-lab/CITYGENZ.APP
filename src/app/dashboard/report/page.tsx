@@ -95,7 +95,7 @@ export default function ReportIssuePage() {
     try {
         const photoFile = data.photo[0];
 
-        // Compression options
+        // Compression options - max size 1MB
         const options = {
           maxSizeMB: 1,
           maxWidthOrHeight: 1920,
@@ -263,7 +263,7 @@ export default function ReportIssuePage() {
                   <FormControl>
                     <Input type="file" accept="image/*" {...form.register("photo")} disabled={isSubmitting} />
                   </FormControl>
-                   <FormDescription>A picture is worth a thousand words.</FormDescription>
+                   <FormDescription>A picture is worth a thousand words (max 1MB).</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -283,7 +283,7 @@ export default function ReportIssuePage() {
                  {location.error && <p className="text-sm font-medium text-destructive">{location.error}</p>}
             </FormItem>
             
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? 'Submitting...' : 'Submit Report'}
             </Button>
@@ -293,3 +293,5 @@ export default function ReportIssuePage() {
     </Card>
   );
 }
+
+    
