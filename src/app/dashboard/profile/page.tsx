@@ -75,10 +75,8 @@ export default function ProfileSetupPage() {
         });
         
         // 2. Update Firestore user document
-        // We use the displayName from the form and the existing photoURL from the auth user object
         const userData = {
             displayName: data.displayName,
-            photoURL: auth.currentUser.photoURL,
         };
 
         setDoc(userDocRef, userData, { merge: true }).catch(error => {
@@ -153,7 +151,7 @@ export default function ProfileSetupPage() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your full name" {...field} defaultValue={user?.displayName || ""} />
+                    <Input placeholder="Enter your full name" {...field} />
                   </FormControl>
                   <FormDescription>
                     This name will be displayed on your reports.
