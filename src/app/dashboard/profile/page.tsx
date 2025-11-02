@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth, useFirestore, useStorage, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "firebase/auth";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -68,11 +68,11 @@ export default function ProfileSetupPage() {
     }
 
     setIsSubmitting(true);
-
+    
     try {
         let photoURL = user.photoURL || '';
         const photoFile = data.photo?.[0];
-
+        
         // 1. Upload photo if a new one is selected
         if (photoFile) {
             const storageRef = ref(storage, `profile-pictures/${user.uid}`);
@@ -80,20 +80,21 @@ export default function ProfileSetupPage() {
             photoURL = await getDownloadURL(uploadResult.ref);
         }
 
-        // 2. Update Firebase Auth profile
+        // 2. Update Firestore user document first
+        const userDocRef = doc(firestore, "users", user.uid);
+        const userData = {
+            displayName: data.displayName,
+            photoURL: photoURL,
+        };
+        
+        // Use setDoc with merge to create or update
+        await setDoc(userDocRef, userData, { merge: true });
+
+        // 3. Update Firebase Auth profile
         await updateProfile(auth.currentUser, {
             displayName: data.displayName,
             photoURL: photoURL,
         });
-
-        // 3. Update Firestore user document
-        const userDocRef = doc(firestore, "users", user.uid);
-        const updatedData = {
-            displayName: data.displayName,
-            photoURL: photoURL,
-        };
-
-        await updateDoc(userDocRef, updatedData);
 
         toast({
             title: "Profile Updated!",
@@ -104,15 +105,21 @@ export default function ProfileSetupPage() {
         router.push("/dashboard");
 
     } catch (error: any) {
+        console.error("Profile update error:", error);
         const userDocRef = doc(firestore, "users", user.uid);
-        if (error.code === 'permission-denied') {
+        if (error.code === 'permission-denied' || error.code === 'storage/unauthorized') {
+            const path = error.code === 'storage/unauthorized' ? `profile-pictures/${user.uid}` : userDocRef.path;
             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userDocRef.path,
+                path: path,
                 operation: 'update',
-                requestResourceData: { displayName: data.displayName, photoURL: user.photoURL } // Guessing photoURL might not be ready
+                requestResourceData: { displayName: data.displayName, photoURL: user.photoURL }
             }));
+             toast({
+                variant: "destructive",
+                title: "Permission Denied",
+                description: "You do not have permission to update the profile. Check security rules.",
+            });
         } else {
-             console.error("Profile update error:", error);
             toast({
                 variant: "destructive",
                 title: "Update Failed",
@@ -123,6 +130,7 @@ export default function ProfileSetupPage() {
         setIsSubmitting(false);
     }
   }
+
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -184,7 +192,7 @@ export default function ProfileSetupPage() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your full name" {...field} />
+                    <Input placeholder="Enter your full name" {...field} defaultValue={user?.displayName || ''} />
                   </FormControl>
                   <FormDescription>
                     This name will be displayed on your reports.
