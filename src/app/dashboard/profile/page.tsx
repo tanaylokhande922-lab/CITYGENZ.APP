@@ -69,62 +69,66 @@ export default function ProfileSetupPage() {
 
     setIsSubmitting(true);
 
-    try {
-        let photoURL = user.photoURL || '';
-        const photoFile = data.photo?.[0];
+    let photoURL = user.photoURL || '';
+    const photoFile = data.photo?.[0];
 
-        // 1. Upload photo if a new one is selected
-        if (photoFile) {
-            const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-            const uploadResult = await uploadBytes(storageRef, photoFile);
+    // 1. Upload photo if a new one is selected
+    if (photoFile) {
+        const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+        await uploadBytes(storageRef, photoFile).then(async (uploadResult) => {
             photoURL = await getDownloadURL(uploadResult.ref);
-        }
-
-        // 2. Update Firebase Auth profile
-        await updateProfile(auth.currentUser, {
-            displayName: data.displayName,
-            photoURL: photoURL,
+        }).catch((error) => {
+            console.error("Photo upload error:", error);
+            toast({
+                variant: "destructive",
+                title: "Upload Failed",
+                description: error.message || "Could not upload profile picture.",
+            });
+            setIsSubmitting(false);
+            return; // Stop execution if photo upload fails
         });
+    }
 
-        // 3. Update Firestore user document
-        const userDocRef = doc(firestore, "users", user.uid);
-        const updatedData = {
-            displayName: data.displayName,
-            photoURL: photoURL,
-        };
-        await updateDoc(userDocRef, updatedData)
-          .catch(error => {
+    // 2. Update Firebase Auth profile
+    await updateProfile(auth.currentUser, {
+        displayName: data.displayName,
+        photoURL: photoURL,
+    });
+
+    // 3. Update Firestore user document
+    const userDocRef = doc(firestore, "users", user.uid);
+    const updatedData = {
+        displayName: data.displayName,
+        photoURL: photoURL,
+    };
+
+    updateDoc(userDocRef, updatedData)
+        .then(() => {
+            toast({
+                title: "Profile Updated!",
+                description: "Your profile has been successfully saved.",
+            });
+            // 4. Redirect to dashboard on success
+            router.push("/dashboard");
+        })
+        .catch(error => {
             if (error.code === 'permission-denied') {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: userDocRef.path,
                     operation: 'update',
                     requestResourceData: updatedData
                 }));
+            } else {
+                 console.error("Profile update error:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Update Failed",
+                    description: error.message || "An unexpected error occurred.",
+                });
             }
-            // Re-throw other errors to be caught by the outer catch block
-            throw error;
+        }).finally(() => {
+            setIsSubmitting(false);
         });
-        
-        toast({
-            title: "Profile Updated!",
-            description: "Your profile has been successfully saved.",
-        });
-
-        // 4. Redirect to dashboard
-        router.push("/dashboard");
-
-    } catch (error: any) {
-        console.error("Profile update error:", error);
-        if (error.code !== 'permission-denied') {
-            toast({
-                variant: "destructive",
-                title: "Update Failed",
-                description: error.message || "An unexpected error occurred.",
-            });
-        }
-    } finally {
-        setIsSubmitting(false);
-    }
   }
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
