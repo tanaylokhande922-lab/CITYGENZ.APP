@@ -37,18 +37,18 @@ service cloud.firestore {
      * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      function isOwner(userId) {
+      function isOwner() {
         return request.auth.uid == userId;
       }
 
-      allow get: if isOwner(userId);
+      allow get: if isOwner();
       // Allow any authenticated user to list all users.
       // This is necessary for the admin/users page.
       // In a production app, this would be restricted to admin roles.
       allow list: if request.auth != null; 
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(userId) && resource != null;
+      allow create: if isOwner() && request.resource.data.id == userId;
+      allow update: if isOwner();
+      allow delete: if isOwner() && resource != null;
     }
 
     /**
@@ -61,14 +61,14 @@ service cloud.firestore {
      * @principle Enforces document ownership for reported issues nested under user profiles.
      */
     match /users/{userId}/reportedIssues/{reportId} {
-      function isOwner(userId) {
+      function isOwner() {
         return request.auth.uid == userId;
       }
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.userId == userId;
-      allow delete: if isOwner(userId) && resource != null;
+      allow get: if isOwner();
+      allow list: if isOwner();
+      allow create: if isOwner() && request.resource.data.userId == userId;
+      allow update: if isOwner() && resource != null && request.resource.data.userId == userId;
+      allow delete: if isOwner() && resource != null;
     }
 
     /**
