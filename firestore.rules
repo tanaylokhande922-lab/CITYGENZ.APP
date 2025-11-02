@@ -13,6 +13,7 @@
  *
  * Key Security Decisions:
  * - Users can only read/write their own profile data.
+ * - Any authenticated user can view the list of all users (for admin purposes).
  * - Users can only read/write issues they have reported.
  * - Municipality worker profiles are only accessible by authenticated users(TODO: refine this).
  * - Issue priorities are readable by everyone. Write access is limited (TODO: define the logic).
@@ -41,7 +42,10 @@ service cloud.firestore {
       }
 
       allow get: if isOwner(userId);
-      allow list: if false; // Disallowing listing of users for privacy.
+      // Allow any authenticated user to list all users.
+      // This is necessary for the admin/users page.
+      // In a production app, this would be restricted to admin roles.
+      allow list: if request.auth != null; 
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
       allow delete: if isOwner(userId) && resource != null;

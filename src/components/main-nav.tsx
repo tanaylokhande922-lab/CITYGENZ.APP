@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, FilePlus2, List, Settings, User } from "lucide-react";
+import { LayoutDashboard, FilePlus2, List, Users } from "lucide-react";
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/report", label: "Report an Issue", icon: FilePlus2 },
   { href: "/dashboard/issues", label: "View Issues", icon: List },
+  { href: "/dashboard/users", label: "Users", icon: Users },
 ];
 
 export function MainNav({ className }: { className?: string }) {

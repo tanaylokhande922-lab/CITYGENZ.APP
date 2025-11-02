@@ -10,10 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Logo } from "@/components/logo";
 import { useState, useEffect } from "react";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useFirestore, useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function AuthenticationPage() {
   const loginHeroImage = PlaceHolderImages.find(image => image.id === 'login-hero');
@@ -24,6 +25,7 @@ export default function AuthenticationPage() {
   const [signUpAadhaar, setSignUpAadhaar] = useState('');
 
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
@@ -36,6 +38,7 @@ export default function AuthenticationPage() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     try {
       await signInWithEmailAndPassword(auth, signInEmail, signInPassword);
       // Let the useEffect handle the redirect
@@ -50,8 +53,19 @@ export default function AuthenticationPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth || !firestore) return;
     try {
-      await createUserWithEmailAndPassword(auth, signUpEmail, signUpPassword);
+      const userCredential = await createUserWithEmailAndPassword(auth, signUpEmail, signUpPassword);
+      const newUser = userCredential.user;
+
+      // Create a user profile document in Firestore
+      await setDoc(doc(firestore, "users", newUser.uid), {
+        id: newUser.uid,
+        aadhaarNumber: signUpAadhaar,
+        email: newUser.email,
+        registrationDate: new Date().toISOString(),
+      });
+      
       // Let the useEffect handle the redirect
     } catch (error: any) {
       toast({
@@ -151,7 +165,7 @@ export default function AuthenticationPage() {
             alt={loginHeroImage.description}
             fill
             className="object-cover"
-            data-ai-hint={loginHeroImage.imageHint}
+            data-ai-hint={loginHeroeImage.imageHint}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
