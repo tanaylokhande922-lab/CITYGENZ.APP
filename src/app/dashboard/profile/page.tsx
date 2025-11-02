@@ -69,66 +69,59 @@ export default function ProfileSetupPage() {
 
     setIsSubmitting(true);
 
-    let photoURL = user.photoURL || '';
-    const photoFile = data.photo?.[0];
+    try {
+        let photoURL = user.photoURL || '';
+        const photoFile = data.photo?.[0];
 
-    // 1. Upload photo if a new one is selected
-    if (photoFile) {
-        const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-        await uploadBytes(storageRef, photoFile).then(async (uploadResult) => {
+        // 1. Upload photo if a new one is selected
+        if (photoFile) {
+            const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+            const uploadResult = await uploadBytes(storageRef, photoFile);
             photoURL = await getDownloadURL(uploadResult.ref);
-        }).catch((error) => {
-            console.error("Photo upload error:", error);
+        }
+
+        // 2. Update Firebase Auth profile
+        await updateProfile(auth.currentUser, {
+            displayName: data.displayName,
+            photoURL: photoURL,
+        });
+
+        // 3. Update Firestore user document
+        const userDocRef = doc(firestore, "users", user.uid);
+        const updatedData = {
+            displayName: data.displayName,
+            photoURL: photoURL,
+        };
+
+        await updateDoc(userDocRef, updatedData);
+
+        toast({
+            title: "Profile Updated!",
+            description: "Your profile has been successfully saved.",
+        });
+        
+        // 4. Redirect to dashboard on success
+        router.push("/dashboard");
+
+    } catch (error: any) {
+        const userDocRef = doc(firestore, "users", user.uid);
+        if (error.code === 'permission-denied') {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: { displayName: data.displayName, photoURL: user.photoURL } // Guessing photoURL might not be ready
+            }));
+        } else {
+             console.error("Profile update error:", error);
             toast({
                 variant: "destructive",
-                title: "Upload Failed",
-                description: error.message || "Could not upload profile picture.",
+                title: "Update Failed",
+                description: error.message || "An unexpected error occurred.",
             });
-            setIsSubmitting(false);
-            return; // Stop execution if photo upload fails
-        });
+        }
+    } finally {
+        setIsSubmitting(false);
     }
-
-    // 2. Update Firebase Auth profile
-    await updateProfile(auth.currentUser, {
-        displayName: data.displayName,
-        photoURL: photoURL,
-    });
-
-    // 3. Update Firestore user document
-    const userDocRef = doc(firestore, "users", user.uid);
-    const updatedData = {
-        displayName: data.displayName,
-        photoURL: photoURL,
-    };
-
-    updateDoc(userDocRef, updatedData)
-        .then(() => {
-            toast({
-                title: "Profile Updated!",
-                description: "Your profile has been successfully saved.",
-            });
-            // 4. Redirect to dashboard on success
-            router.push("/dashboard");
-        })
-        .catch(error => {
-            if (error.code === 'permission-denied') {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: userDocRef.path,
-                    operation: 'update',
-                    requestResourceData: updatedData
-                }));
-            } else {
-                 console.error("Profile update error:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Update Failed",
-                    description: error.message || "An unexpected error occurred.",
-                });
-            }
-        }).finally(() => {
-            setIsSubmitting(false);
-        });
   }
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
