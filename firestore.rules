@@ -36,26 +36,23 @@ service cloud.firestore {
         return request.auth.uid == userId;
       }
 
+      // A user can get their own profile, and authenticated users can list all users.
       allow get: if isOwner();
       allow list: if request.auth != null; // For admin/users page. Should be restricted in prod.
 
-      // A user can create their own document if the doc ID matches their auth ID.
-      // A user can update their own document.
+      // A user can create their own document and update their own document.
       allow write: if isOwner();
 
+      // A user can delete their own document.
       allow delete: if isOwner();
-    }
 
-    /**
-     * @description Controls access to reported issues under a user's profile.
-     */
-    match /users/{userId}/reportedIssues/{reportId} {
-      function isOwner() {
-        return request.auth.uid == userId;
+      /**
+       * @description Controls access to reported issues under a user's profile.
+       */
+      match /reportedIssues/{reportId} {
+        // The user who owns the parent 'user' document can do anything with their own issues.
+        allow read, write: if isOwner();
       }
-      
-      // The user who owns the parent 'user' document can do anything with their own issues.
-      allow read, write: if isOwner();
     }
 
     /**
