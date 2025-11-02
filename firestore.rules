@@ -47,7 +47,8 @@ service cloud.firestore {
       // In a production app, this would be restricted to admin roles.
       allow list: if request.auth != null; 
       allow create: if isOwner() && request.resource.data.id == userId;
-      allow update: if isOwner();
+      // A user should be able to update their own profile document.
+      allow update: if request.auth.uid == userId;
       allow delete: if isOwner() && resource != null;
     }
 
