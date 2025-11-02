@@ -8,13 +8,13 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarInset,
-  SidebarTrigger,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { ADMIN_EMAIL } from "@/lib/constants";
 
 export default function DashboardLayout({
   children,
@@ -23,12 +23,19 @@ export default function DashboardLayout({
 }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/');
     }
-  }, [user, isUserLoading, router]);
+    // If the user is not an admin and tries to access the users page, redirect them.
+    if (!isUserLoading && user && !isAdmin && pathname === '/dashboard/users') {
+        router.push('/dashboard');
+    }
+  }, [user, isUserLoading, router, isAdmin, pathname]);
 
   if (isUserLoading || !user) {
     return (
@@ -46,7 +53,7 @@ export default function DashboardLayout({
             <Logo />
           </SidebarHeader>
           <SidebarContent>
-            <MainNav />
+            <MainNav isAdmin={isAdmin} />
           </SidebarContent>
           <SidebarRail />
         </Sidebar>

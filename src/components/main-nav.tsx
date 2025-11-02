@@ -14,16 +14,21 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/report", label: "Report an Issue", icon: FilePlus2 },
   { href: "/dashboard/issues", label: "View Issues", icon: List },
-  { href: "/dashboard/users", label: "Users", icon: Users },
 ];
 
-export function MainNav({ className }: { className?: string }) {
+const adminNavItems = [
+    { href: "/dashboard/users", label: "Users", icon: Users },
+]
+
+export function MainNav({ className, isAdmin = false }: { className?: string; isAdmin?: boolean }) {
   const pathname = usePathname();
+
+  const allNavItems = isAdmin ? [...navItems, ...adminNavItems] : navItems;
 
   return (
     <nav className={cn("flex flex-col", className)}>
       <SidebarMenu>
-        {navItems.map((item) => (
+        {allNavItems.map((item) => (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} legacyBehavior={false} passHref>
               <SidebarMenuButton
