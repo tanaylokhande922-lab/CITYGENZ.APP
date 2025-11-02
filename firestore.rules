@@ -8,18 +8,32 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      // In a real app, use custom claims, not email.
       return request.auth != null && request.auth.token.email == 'tanaylokhande922@gmail.com';
     }
 
+    // Rules for the 'users' collection
     match /users/{userId} {
+      // An owner can read and update their own user document.
       allow read, update: if isOwner(userId);
-      allow list: if isAdmin();
-      
+      // Deny creation of user docs via client, this should be handled server-side or on signup.
+      allow create: if false;
+      // Admins can get any specific user document.
+      allow get: if isAdmin();
+
+      // Rules for the 'reportedIssues' subcollection within a user document
       match /reportedIssues/{reportId} {
+        // The owner of the user document can perform all operations on their own reported issues.
         allow create, read, update, delete: if isOwner(userId);
       }
     }
 
+    // A separate rule is needed to allow LIST operations on a collection.
+    // This allows admins to query the entire 'users' collection.
+    match /users/{document=**} {
+        allow list: if isAdmin();
+    }
+    
     match /municipalityWorkers/{workerId} {
       allow get, list: if request.auth != null;
       allow write: if false; 
