@@ -3,14 +3,12 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Restrict access to files within the 'issues' folder.
-    // The path is structured as 'issues/{userId}/{fileName}'.
-    match /issues/{userId}/{fileName} {
+    // Restrict access to files within the 'reports' folder.
+    match /reports/{allPaths=**} {
       /**
-       * @description Allows a user to read and write files only within their own user-specific folder.
-       * The 'userId' in the path must match the UID of the authenticated user.
+       * @description Allows any authenticated user to read and write files within the 'reports' folder.
        */
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null;
     }
   }
 }
