@@ -1,76 +1,43 @@
 
-/**
- * @fileoverview Firestore Security Rules for CityGenZ Reporting Platform
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and reported issues,
- * and restricts access to municipality worker profiles.  Issue priorities are publicly readable but writable only with appropriate authorization (TODO).
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles.
- * - /users/{userId}/reportedIssues/{reportId}: Stores issues reported by each user.
- * - /municipalityWorkers/{workerId}: Stores municipality worker profiles.
- * - /issuePriorities/{issueId}: Stores issue priorities assigned to reported issues.
- *
- * Key Security Decisions:
- * - Users can only read/write their own profile data.
- * - Any authenticated user can view the list of all users (for admin purposes).
- * - Users can only read/write issues they have reported.
- * - Municipality worker profiles are only accessible by authenticated users(TODO: refine this).
- * - Issue priorities are readable by everyone. Write access is limited (TODO: define the logic).
- * - Listing of user documents is disallowed for privacy.
- *
- * Denormalization for Authorization:
- * - ReportedIssue documents include the userId, enabling security rules to validate ownership
- *   without needing to fetch the user document.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if the requesting user is the owner of the document.
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
     /**
      * @description Controls access to user profile documents and their subcollections.
+     * A user can read, create, update, and delete their own document and subcollections.
      */
     match /users/{userId} {
-      function isOwner() {
-        return request.auth.uid == userId;
-      }
+      allow read, write: if isOwner(userId);
 
-      // Allow a user to read their own profile and create their own document.
-      // Allow any authenticated user to list users for the admin page.
-      allow get: if isOwner();
-      allow list: if request.auth != null;
-      
-      // Allow a user to create and update their own profile document.
-      // This single 'write' rule covers both 'create' and 'update'.
-      allow write: if isOwner();
-      
-      // A user can delete their own document.
-      allow delete: if isOwner();
-
-      /**
-       * @description Controls access to reported issues under a user's profile.
-       * The user who owns the parent 'user' document can read and write their own issues.
-       */
+      // Rules for the nested 'reportedIssues' subcollection.
+      // Inherits the ownership check from the parent.
       match /reportedIssues/{reportId} {
-        allow read, write: if isOwner();
+        allow read, write: if isOwner(userId);
       }
     }
 
     /**
      * @description Controls access to municipality worker profiles.
+     * For now, any authenticated user can read this data, but no one can write it.
      */
     match /municipalityWorkers/{workerId} {
-      allow get, list: if request.auth != null; //TODO: refine this with more restrictive rules
-      allow create, update, delete: if false; //TODO: refine this with more restrictive rules
+      allow get, list: if request.auth != null;
+      allow write: if false;
     }
 
     /**
      * @description Controls access to issue priority documents.
+     * For now, this data is publicly readable, but no one can write it.
      */
     match /issuePriorities/{issueId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow write: if false;
     }
   }
 }
