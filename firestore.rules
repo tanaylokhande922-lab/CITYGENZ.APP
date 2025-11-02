@@ -46,9 +46,9 @@ service cloud.firestore {
       // This is necessary for the admin/users page.
       // In a production app, this would be restricted to admin roles.
       allow list: if request.auth != null; 
-      allow create: if isOwner() && request.resource.data.id == userId;
-      // A user should be able to update their own profile document.
-      allow update: if isOwner();
+      // A user can create their own document, ensuring the doc ID matches their auth ID.
+      // A user can update their own document.
+      allow write: if isOwner();
       allow delete: if isOwner() && resource != null;
     }
 
