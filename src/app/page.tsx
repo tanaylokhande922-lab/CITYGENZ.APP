@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { PlaceHolderImages, ProfilePictures } from "@/lib/placeholder-images";
 import { Logo } from "@/components/logo";
 import { useState, useEffect } from "react";
 import { useAuth, useFirestore, useUser } from "@/firebase";
@@ -67,6 +67,9 @@ export default function AuthenticationPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, signUpEmail, signUpPassword);
       const newUser = userCredential.user;
 
+      // Randomly select a profile picture
+      const randomPfp = ProfilePictures[Math.floor(Math.random() * ProfilePictures.length)];
+
       // Create a user profile document in Firestore
       await setDoc(doc(firestore, "users", newUser.uid), {
         id: newUser.uid,
@@ -74,7 +77,7 @@ export default function AuthenticationPage() {
         email: newUser.email,
         registrationDate: new Date().toISOString(),
         displayName: '', // Initialize display name
-        photoURL: '', // Initialize photo URL
+        photoURL: randomPfp.imageUrl, // Assign random profile picture
       });
 
       // Redirect to profile setup page

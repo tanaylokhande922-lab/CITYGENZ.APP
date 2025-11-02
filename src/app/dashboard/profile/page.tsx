@@ -23,11 +23,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useFirestore, useStorage, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useAuth, useFirestore, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User as UserIcon } from "lucide-react";
@@ -38,20 +37,17 @@ const profileFormSchema = z.object({
   }).max(50, {
     message: "Name must not be longer than 50 characters."
   }),
-  photo: z.any().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 export default function ProfileSetupPage() {
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
-  const storage = useStorage();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -62,7 +58,7 @@ export default function ProfileSetupPage() {
   });
   
   async function onSubmit(data: ProfileFormValues) {
-    if (!user || !auth.currentUser || !firestore || !storage) {
+    if (!user || !auth.currentUser || !firestore) {
         toast({ title: "Error", description: "Not authenticated or services unavailable.", variant: "destructive"});
         return;
     }
@@ -70,24 +66,21 @@ export default function ProfileSetupPage() {
     setIsSubmitting(true);
     
     try {
-        let photoURL = user.photoURL || '';
-        const photoFile = data.photo?.[0];
-        
-        // 1. Upload photo if a new one is selected
-        if (photoFile) {
-            const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-            const uploadResult = await uploadBytes(storageRef, photoFile);
-            photoURL = await getDownloadURL(uploadResult.ref);
-        }
-
-        // 2. Update Firestore user document first
         const userDocRef = doc(firestore, "users", user.uid);
+        
+        // 1. Update Auth profile
+        await updateProfile(auth.currentUser, {
+            displayName: data.displayName,
+            // photoURL is already set on sign up, no need to update it here unless we change it
+        });
+        
+        // 2. Update Firestore user document
+        // We use the displayName from the form and the existing photoURL from the auth user object
         const userData = {
             displayName: data.displayName,
-            photoURL: photoURL,
+            photoURL: auth.currentUser.photoURL,
         };
-        
-        // Use setDoc with merge to create or update
+
         setDoc(userDocRef, userData, { merge: true }).catch(error => {
             if (error.code === 'permission-denied') {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -95,14 +88,14 @@ export default function ProfileSetupPage() {
                     operation: 'update',
                     requestResourceData: userData,
                 }));
+            } else {
+                 console.error("Firestore update error:", error);
+                 toast({
+                     variant: "destructive",
+                     title: "Database Update Failed",
+                     description: error.message || "Could not save profile to the database.",
+                 });
             }
-        });
-
-
-        // 3. Update Firebase Auth profile
-        await updateProfile(auth.currentUser, {
-            displayName: data.displayName,
-            photoURL: photoURL,
         });
 
         toast({
@@ -110,41 +103,20 @@ export default function ProfileSetupPage() {
             description: "Your profile has been successfully saved.",
         });
         
-        // 4. Redirect to dashboard on success
         router.push("/dashboard");
 
     } catch (error: any) {
         console.error("Profile update error:", error);
-        if (error.code === 'storage/unauthorized') {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `profile-pictures/${user.uid}`,
-                operation: 'write',
-                requestResourceData: { displayName: data.displayName, photoURL: user.photoURL }
-            }));
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Update Failed",
-                description: error.message || "An unexpected error occurred.",
-            });
-        }
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: error.message || "An unexpected error occurred.",
+        });
     } finally {
         setIsSubmitting(false);
     }
   }
 
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPhotoPreview(reader.result as string);
-        }
-        reader.readAsDataURL(file);
-    }
-  }
-  
   const getInitials = (name: string | undefined | null) => {
     if (!name) return "";
     const parts = name.split(' ');
@@ -159,32 +131,19 @@ export default function ProfileSetupPage() {
       <CardHeader>
         <CardTitle>Set Up Your Profile</CardTitle>
         <CardDescription>
-          Please add your name and a profile picture to complete your registration.
+          Please add your name to complete your registration. Your profile picture has been randomly assigned.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                    <AvatarImage src={photoPreview || user?.photoURL || undefined} />
+            <div className="flex justify-center">
+                <Avatar className="h-24 w-24">
+                    <AvatarImage src={user?.photoURL || undefined} />
                     <AvatarFallback className="text-3xl">
-                        {photoPreview ? null : getInitials(user?.displayName) || <UserIcon size={40}/>}
+                        {getInitials(user?.displayName) || <UserIcon size={40}/>}
                     </AvatarFallback>
                 </Avatar>
-                <FormField
-                    control={form.control}
-                    name="photo"
-                    render={({ field }) => (
-                        <FormItem className="flex-1">
-                        <FormLabel>Profile Picture</FormLabel>
-                        <FormControl>
-                            <Input type="file" accept="image/*" {...form.register("photo")} onChange={handlePhotoChange} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
             </div>
 
             <FormField
@@ -194,7 +153,7 @@ export default function ProfileSetupPage() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your full name" {...field} />
+                    <Input placeholder="Enter your full name" {...field} defaultValue={user?.displayName || ""} />
                   </FormControl>
                   <FormDescription>
                     This name will be displayed on your reports.
