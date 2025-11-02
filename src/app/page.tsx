@@ -1,3 +1,5 @@
+'use client';
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -7,9 +9,66 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Logo } from "@/components/logo";
+import { useState, useEffect } from "react";
+import { useAuth, useUser } from "@/firebase";
+import { useRouter } from "next/navigation";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AuthenticationPage() {
   const loginHeroImage = PlaceHolderImages.find(image => image.id === 'login-hero');
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
+  const [signUpEmail, setSignUpEmail] = useState('');
+  const [signUpPassword, setSignUpPassword] = useState('');
+  const [signUpAadhaar, setSignUpAadhaar] = useState('');
+
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, signInEmail, signInPassword);
+      // Let the useEffect handle the redirect
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign In Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createUserWithEmailAndPassword(auth, signUpEmail, signUpPassword);
+      // Let the useEffect handle the redirect
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
+    }
+  };
+
+  if (isUserLoading || user) {
+    return (
+        <div className="w-full h-screen flex items-center justify-center">
+            <p>Loading...</p>
+        </div>
+    );
+  }
 
   return (
     <div className="w-full h-screen lg:grid lg:grid-cols-2">
@@ -28,59 +87,59 @@ export default function AuthenticationPage() {
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="signin">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">Sign In</CardTitle>
-                  <CardDescription>
-                    Enter your email below to login to your account.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email-signin">Email</Label>
-                    <Input id="email-signin" type="email" placeholder="m@example.com" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <div className="flex items-center">
-                      <Label htmlFor="password-signin">Password</Label>
-                      <Link href="#" className="ml-auto inline-block text-sm underline" prefetch={false}>
-                        Forgot your password?
-                      </Link>
+              <form onSubmit={handleSignIn}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-2xl">Sign In</CardTitle>
+                    <CardDescription>
+                      Enter your email below to login to your account.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="email-signin">Email</Label>
+                      <Input id="email-signin" type="email" placeholder="m@example.com" required value={signInEmail} onChange={(e) => setSignInEmail(e.target.value)} />
                     </div>
-                    <Input id="password-signin" type="password" required />
-                  </div>
-                  <Button type="submit" className="w-full as" asChild>
-                    <Link href="/dashboard">Sign In</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    <div className="grid gap-2">
+                      <div className="flex items-center">
+                        <Label htmlFor="password-signin">Password</Label>
+                        <Link href="#" className="ml-auto inline-block text-sm underline" prefetch={false}>
+                          Forgot your password?
+                        </Link>
+                      </div>
+                      <Input id="password-signin" type="password" required value={signInPassword} onChange={(e) => setSignInPassword(e.target.value)} />
+                    </div>
+                    <Button type="submit" className="w-full">Sign In</Button>
+                  </CardContent>
+                </Card>
+              </form>
             </TabsContent>
             <TabsContent value="signup">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">Sign Up</CardTitle>
-                  <CardDescription>
-                    Enter your information to create an account.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email-signup">Email</Label>
-                    <Input id="email-signup" type="email" placeholder="m@example.com" required />
-                  </div>
-                   <div className="grid gap-2">
-                    <Label htmlFor="aadhaar">Aadhaar Number</Label>
-                    <Input id="aadhaar" type="text" placeholder="XXXX XXXX XXXX" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password-signup">Password</Label>
-                    <Input id="password-signup" type="password" required />
-                  </div>
-                  <Button type="submit" className="w-full" asChild>
-                    <Link href="/dashboard">Create an account</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <form onSubmit={handleSignUp}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-2xl">Sign Up</CardTitle>
+                    <CardDescription>
+                      Enter your information to create an account.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="email-signup">Email</Label>
+                      <Input id="email-signup" type="email" placeholder="m@example.com" required value={signUpEmail} onChange={(e) => setSignUpEmail(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="aadhaar">Aadhaar Number</Label>
+                      <Input id="aadhaar" type="text" placeholder="XXXX XXXX XXXX" required value={signUpAadhaar} onChange={(e) => setSignUpAadhaar(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="password-signup">Password</Label>
+                      <Input id="password-signup" type="password" required value={signUpPassword} onChange={(e) => setSignUpPassword(e.target.value)} />
+                    </div>
+                    <Button type="submit" className="w-full">Create an account</Button>
+                  </CardContent>
+                </Card>
+              </form>
             </TabsContent>
           </Tabs>
         </div>

@@ -13,7 +13,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/report", label: "Report an Issue", icon: FilePlus2 },
-  { href: "/dashboard/issues", label: "My Reports", icon: List },
+  { href: "/dashboard/issues", label: "View Issues", icon: List },
 ];
 
 export function MainNav({ className }: { className?: string }) {
