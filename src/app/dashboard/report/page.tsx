@@ -1,9 +1,10 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,7 +32,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
+import { useFirestore, useUser, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useRouter } from "next/navigation";
 
 const reportFormSchema = z.object({
   category: z.string({ required_error: "Please select an issue category." }),
@@ -40,14 +45,33 @@ const reportFormSchema = z.object({
   }).max(500, {
     message: "Description must not be longer than 500 characters."
   }),
-  photo: z.any().refine((file) => file?.length == 1, 'Photo is required.'),
-  location: z.string().optional(),
+  photo: z.any().refine((files) => files?.length == 1, 'Photo is required.'),
 });
 
 type ReportFormValues = z.infer<typeof reportFormSchema>;
 
+type LocationState = {
+  latitude: number | null;
+  longitude: number | null;
+  address: string;
+  error: string | null;
+}
+
 export default function ReportIssuePage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const storage = useStorage();
+  const { user } = useUser();
+  const router = useRouter();
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [location, setLocation] = useState<LocationState>({
+    latitude: null,
+    longitude: null,
+    address: "",
+    error: null
+  });
+
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportFormSchema),
     defaultValues: {
@@ -55,21 +79,108 @@ export default function ReportIssuePage() {
     },
   });
 
-  function onSubmit(data: ReportFormValues) {
-    console.log(data);
-    toast({
-      title: "Report Submitted!",
-      description: "Thank you for helping improve your city. Your report has been received.",
-    });
-    form.reset();
+  async function onSubmit(data: ReportFormValues) {
+    if (!user || !firestore || !storage) {
+        toast({ title: "Error", description: "You must be logged in to report an issue.", variant: "destructive"});
+        return;
+    }
+    if (!location.latitude || !location.longitude) {
+        toast({ title: "Location Required", description: "Please provide your location before submitting.", variant: "destructive" });
+        return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+        const photoFile = data.photo[0];
+        const photoRef = ref(storage, `issues/${user.uid}/${Date.now()}-${photoFile.name}`);
+        
+        // 1. Upload photo to storage
+        const uploadResult = await uploadBytes(photoRef, photoFile);
+        const photoUrl = await getDownloadURL(uploadResult.ref);
+
+        // 2. Create issue document in Firestore
+        const issueData = {
+            userId: user.uid,
+            category: data.category,
+            description: data.description,
+            photoUrl: photoUrl,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            address: location.address, // Saving fetched address
+            reportedDate: serverTimestamp(),
+            status: "Reported",
+        };
+
+        const reportsCollectionRef = collection(firestore, 'users', user.uid, 'reportedIssues');
+        
+        await addDoc(reportsCollectionRef, issueData).catch(error => {
+             if (error.code === 'permission-denied') {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: reportsCollectionRef.path,
+                    operation: 'create',
+                    requestResourceData: issueData,
+                }));
+             }
+             throw error; // re-throw to be caught by outer catch
+        });
+
+        toast({
+            title: "Report Submitted!",
+            description: "Thank you for helping improve your city.",
+        });
+        
+        form.reset();
+        setLocation({ latitude: null, longitude: null, address: "", error: null });
+        router.push("/dashboard/issues");
+
+    } catch (error: any) {
+        console.error("Report submission error:", error);
+        toast({
+            variant: "destructive",
+            title: "Submission Failed",
+            description: error.message || "Could not save your report. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   function handleGetLocation() {
-    form.setValue("location", "123 Civic Center, Your City (Mocked Location)");
-     toast({
-      title: "Location Captured",
-      description: "Mocked location has been set.",
-    });
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const address = `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`;
+          setLocation({
+            latitude,
+            longitude,
+            address, // You can use a geocoding service here to get a real address
+            error: null,
+          });
+          toast({
+            title: "Location Captured",
+            description: "Your current location has been set.",
+          });
+        },
+        (error) => {
+          setLocation(l => ({ ...l, error: error.message }));
+          toast({
+            variant: "destructive",
+            title: "Location Error",
+            description: error.message,
+          });
+        }
+      );
+    } else {
+      const errorMsg = "Geolocation is not supported by this browser.";
+      setLocation(l => ({...l, error: errorMsg}));
+      toast({
+        variant: "destructive",
+        title: "Location Error",
+        description: errorMsg,
+      });
+    }
   }
 
   return (
@@ -92,6 +203,7 @@ export default function ReportIssuePage() {
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
+                    disabled={isSubmitting}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -119,6 +231,7 @@ export default function ReportIssuePage() {
                     <Textarea
                       placeholder="Tell us more about the issue"
                       className="resize-none"
+                      disabled={isSubmitting}
                       {...field}
                     />
                   </FormControl>
@@ -136,7 +249,7 @@ export default function ReportIssuePage() {
                 <FormItem>
                   <FormLabel>Upload Photo</FormLabel>
                   <FormControl>
-                    <Input type="file" accept="image/*" {...form.register("photo")} />
+                    <Input type="file" accept="image/*" {...form.register("photo")} disabled={isSubmitting} />
                   </FormControl>
                    <FormDescription>A picture is worth a thousand words.</FormDescription>
                   <FormMessage />
@@ -147,17 +260,21 @@ export default function ReportIssuePage() {
               <FormLabel>Location</FormLabel>
                 <div className="flex gap-2">
                     <FormControl>
-                        <Input value={form.watch('location') || ''} placeholder="Click button to get location" readOnly/>
+                        <Input value={location.address} placeholder="Click button to get location" readOnly/>
                     </FormControl>
-                    <Button type="button" variant="outline" onClick={handleGetLocation}>
+                    <Button type="button" variant="outline" onClick={handleGetLocation} disabled={isSubmitting}>
                         <MapPin className="mr-2 h-4 w-4" />
                         Get Live Location
                     </Button>
                 </div>
                  <FormDescription>Your current location will be attached to the report.</FormDescription>
+                 {location.error && <p className="text-sm font-medium text-destructive">{location.error}</p>}
             </FormItem>
             
-            <Button type="submit">Submit Report</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
+            </Button>
           </form>
         </Form>
       </CardContent>

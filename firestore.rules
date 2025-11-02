@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Firestore Security Rules for CityGenZ Reporting Platform
  *
@@ -29,12 +30,6 @@ service cloud.firestore {
 
     /**
      * @description Controls access to user profile documents.
-     * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their own profile.
-     * @deny (create) User with ID 'user123' cannot create a profile with a different ID ('user456').
-     * @allow (get, list, update, delete) User with ID 'user123' can read and modify their own profile.
-     * @deny (get, list, update, delete) User with ID 'user123' cannot read or modify another user's profile ('user456').
-     * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
       function isOwner() {
@@ -42,42 +37,29 @@ service cloud.firestore {
       }
 
       allow get: if isOwner();
-      // Allow any authenticated user to list all users.
-      // This is necessary for the admin/users page.
-      // In a production app, this would be restricted to admin roles.
-      allow list: if request.auth != null; 
-      // A user can create their own document, ensuring the doc ID matches their auth ID.
+      allow list: if request.auth != null; // For admin/users page. Should be restricted in prod.
+
+      // A user can create their own document if the doc ID matches their auth ID.
       // A user can update their own document.
       allow write: if isOwner();
-      allow delete: if isOwner() && resource != null;
+
+      allow delete: if isOwner();
     }
 
     /**
      * @description Controls access to reported issues under a user's profile.
-     * @path /users/{userId}/reportedIssues/{reportId}
-     * @allow (create) User with ID 'user123' can create an issue under their profile.
-     * @deny (create) User with ID 'user123' cannot create an issue under another user's profile ('user456').
-     * @allow (get, list, update, delete) User with ID 'user12_3' can read and modify their own reported issues.
-     * @deny (get, list, update, delete) User with ID 'user123' cannot read or modify reported issues under another user's profile ('user456').
-     * @principle Enforces document ownership for reported issues nested under user profiles.
      */
     match /users/{userId}/reportedIssues/{reportId} {
       function isOwner() {
         return request.auth.uid == userId;
       }
-      allow get: if isOwner();
-      allow list: if isOwner();
-      allow create: if isOwner() && request.resource.data.userId == userId;
-      allow update: if isOwner() && resource != null && request.resource.data.userId == userId;
-      allow delete: if isOwner() && resource != null;
+      
+      // The user who owns the parent 'user' document can do anything with their own issues.
+      allow read, write: if isOwner();
     }
 
     /**
      * @description Controls access to municipality worker profiles.
-     * @path /municipalityWorkers/{workerId}
-     * @allow (get, list) Any authenticated user can read worker profiles.
-     * @deny (create, update, delete) No one can create, update, or delete worker profiles (TODO: refine this with admin roles).
-     * @principle Restricts write access to municipality worker profiles; read access is currently open to all authenticated users.
      */
     match /municipalityWorkers/{workerId} {
       allow get, list: if request.auth != null; //TODO: refine this with more restrictive rules
@@ -86,9 +68,6 @@ service cloud.firestore {
 
     /**
      * @description Controls access to issue priority documents.
-     * @path /issuePriorities/{issueId}
-     * @allow (get, list) Everyone can read issue priorities.
-     * @deny (create, update, delete) No one can create, update, or delete issue priorities (TODO: define who can).
      */
     match /issuePriorities/{issueId} {
       allow get, list: if true;
