@@ -1,0 +1,93 @@
+/**
+ * @fileoverview Firestore Security Rules for CityGenZ Reporting Platform
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user profiles and reported issues,
+ * and restricts access to municipality worker profiles.  Issue priorities are publicly readable but writable only with appropriate authorization (TODO).
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles.
+ * - /users/{userId}/reportedIssues/{reportId}: Stores issues reported by each user.
+ * - /municipalityWorkers/{workerId}: Stores municipality worker profiles.
+ * - /issuePriorities/{issueId}: Stores issue priorities assigned to reported issues.
+ *
+ * Key Security Decisions:
+ * - Users can only read/write their own profile data.
+ * - Users can only read/write issues they have reported.
+ * - Municipality worker profiles are only accessible by authenticated users(TODO: refine this).
+ * - Issue priorities are readable by everyone. Write access is limited (TODO: define the logic).
+ * - Listing of user documents is disallowed for privacy.
+ *
+ * Denormalization for Authorization:
+ * - ReportedIssue documents include the userId, enabling security rules to validate ownership
+ *   without needing to fetch the user document.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (create) User with ID 'user123' can create their own profile.
+     * @deny (create) User with ID 'user123' cannot create a profile with a different ID ('user456').
+     * @allow (get, list, update, delete) User with ID 'user123' can read and modify their own profile.
+     * @deny (get, list, update, delete) User with ID 'user123' cannot read or modify another user's profile ('user456').
+     * @principle Enforces document ownership for user profiles.
+     */
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Disallowing listing of users for privacy.
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Controls access to reported issues under a user's profile.
+     * @path /users/{userId}/reportedIssues/{reportId}
+     * @allow (create) User with ID 'user123' can create an issue under their profile.
+     * @deny (create) User with ID 'user123' cannot create an issue under another user's profile ('user456').
+     * @allow (get, list, update, delete) User with ID 'user123' can read and modify their own reported issues.
+     * @deny (get, list, update, delete) User with ID 'user123' cannot read or modify reported issues under another user's profile ('user456').
+     * @principle Enforces document ownership for reported issues nested under user profiles.
+     */
+    match /users/{userId}/reportedIssues/{reportId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isOwner(userId) && resource != null && request.resource.data.userId == userId;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Controls access to municipality worker profiles.
+     * @path /municipalityWorkers/{workerId}
+     * @allow (get, list) Any authenticated user can read worker profiles.
+     * @deny (create, update, delete) No one can create, update, or delete worker profiles (TODO: refine this with admin roles).
+     * @principle Restricts write access to municipality worker profiles; read access is currently open to all authenticated users.
+     */
+    match /municipalityWorkers/{workerId} {
+      allow get, list: if request.auth != null; //TODO: refine this with more restrictive rules
+      allow create, update, delete: if false; //TODO: refine this with more restrictive rules
+    }
+
+    /**
+     * @description Controls access to issue priority documents.
+     * @path /issuePriorities/{issueId}
+     * @allow (get, list) Everyone can read issue priorities.
+     * @deny (create, update, delete) No one can create, update, or delete issue priorities (TODO: define who can).
+     */
+    match /issuePriorities/{issueId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+  }
+}

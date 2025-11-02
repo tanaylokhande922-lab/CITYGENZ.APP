@@ -1,0 +1,237 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the CityGenZ Reporting platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "aadhaarNumber": {
+          "type": "string",
+          "description": "Aadhaar number of the user. Used for verification."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user. Used for verification.",
+          "format": "email"
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "Date and time the user registered.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "aadhaarNumber",
+        "email",
+        "registrationDate"
+      ]
+    },
+    "ReportedIssue": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ReportedIssue",
+      "type": "object",
+      "description": "Represents a reported civic issue.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the reported issue."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N ReportedIssue)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the reported issue."
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "URL of the photo submitted with the report.",
+          "format": "uri"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude of the issue location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude of the issue location."
+        },
+        "reportedDate": {
+          "type": "string",
+          "description": "Date and time the issue was reported.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the reported issue (e.g., 'Reported', 'Under Review', 'In Progress', 'Resolved')."
+        },
+        "estimatedResolutionTime": {
+          "type": "string",
+          "description": "Estimated time to resolve the issue. Provided by the Municipal Corporation.",
+          "format": "date-time"
+        },
+        "municipalityUpdate": {
+          "type": "string",
+          "description": "Updates provided by the municipal corporation regarding the resolution process."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "description",
+        "photoUrl",
+        "latitude",
+        "longitude",
+        "reportedDate",
+        "status"
+      ]
+    },
+    "MunicipalityWorker": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MunicipalityWorker",
+      "type": "object",
+      "description": "Represents a worker in the Municipal Corporation who handles reported issues.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the municipality worker."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the municipality worker."
+        },
+        "department": {
+          "type": "string",
+          "description": "Department the worker belongs to."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the worker.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "department",
+        "email"
+      ]
+    },
+    "IssuePriority": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IssuePriority",
+      "type": "object",
+      "description": "Represents the priority assigned to a reported issue by the AI tool.",
+      "properties": {
+        "issueId": {
+          "type": "string",
+          "description": "Reference to ReportedIssue. (Relationship: ReportedIssue 1:1 IssuePriority).  This is also the primary key."
+        },
+        "priorityScore": {
+          "type": "number",
+          "description": "Priority score assigned by the AI tool. Higher score indicates higher priority."
+        },
+        "severity": {
+          "type": "string",
+          "description": "Severity level of the issue (e.g., 'Low', 'Medium', 'High')."
+        },
+        "frequency": {
+          "type": "number",
+          "description": "Frequency of similar issues reported in the same location."
+        }
+      },
+      "required": [
+        "issueId",
+        "priorityScore",
+        "severity",
+        "frequency"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Uses path-based ownership for private user data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/reportedIssues/{reportId}",
+        "definition": {
+          "entityName": "ReportedIssue",
+          "schema": {
+            "$ref": "#/backend/entities/ReportedIssue"
+          },
+          "description": "Stores issues reported by each user. Includes denormalized 'userId' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user reporting the issue."
+            },
+            {
+              "name": "reportId",
+              "description": "The unique identifier of the reported issue."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/municipalityWorkers/{workerId}",
+        "definition": {
+          "entityName": "MunicipalityWorker",
+          "schema": {
+            "$ref": "#/backend/entities/MunicipalityWorker"
+          },
+          "description": "Stores profiles of municipality workers. Only accessible by admins.",
+          "params": [
+            {
+              "name": "workerId",
+              "description": "The unique identifier of the municipality worker."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/issuePriorities/{issueId}",
+        "definition": {
+          "entityName": "IssuePriority",
+          "schema": {
+            "$ref": "#/backend/entities/IssuePriority"
+          },
+          "description": "Stores issue priorities assigned by the AI tool. The 'issueId' is the document ID, referencing the ReportedIssue.",
+          "params": [
+            {
+              "name": "issueId",
+              "description": "The unique identifier of the reported issue, used as the document ID."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the CityGenZ reporting platform, focusing on user-reported civic issues and their resolution by the municipal corporation. The structure prioritizes Authorization Independence, clarity, and scalability.\n\n**Authorization Independence**: Achieved through denormalization. The `ReportedIssue` documents include the `userId`, enabling security rules to validate ownership without needing to `get()` the user document. \n\n**Structural Segregation:** Separate collections are used for users, reported issues, municipality workers and issue priorities to ensure homogeneous security posture. User-owned data is stored under `/users/{userId}`.\n\n**Access Modeling:** Path-based ownership is used for `ReportedIssue` documents under the `/users/{userId}/reportedIssues/{reportId}` path, making security rules simple. \n\n**QAPs Support:** The structure supports secure list operations (QAPs) by segregating data based on ownership and by having predictable data schemas within each collection. Security rules can efficiently filter accessible data based on the `userId` present in `ReportedIssue` documents and the user's authentication status.\n\nThis structure allows secure and scalable data management for the CityGenZ reporting platform, ensuring that authorization checks are efficient and maintainable."
+  }
+}
