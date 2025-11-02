@@ -32,7 +32,9 @@ export default function DashboardPage() {
   const inProgressIssues = issues.filter(
     (issue) => issue.status === "In Progress"
   ).length;
-  const pendingIssues = totalIssues - resolvedIssues - inProgressIssues;
+  const inReviewIssues = issues.filter(
+    (issue) => issue.status === "In Review"
+  ).length;
 
   const issuesByCategory = issues.reduce((acc, issue) => {
     acc[issue.category] = (acc[issue.category] || 0) + 1;
@@ -95,10 +97,10 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+            <CardTitle className="text-sm font-medium">In Review</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingIssues}</div>
+            <div className="text-2xl font-bold">{inReviewIssues}</div>
           </CardContent>
         </Card>
       </div>
@@ -146,14 +148,19 @@ export default function DashboardPage() {
                   nameKey="name"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
-                  {statusChartData.map((entry, index) => (
+                  {statusChartData.map((entry) => (
                     <Cell
-                      key={`cell-${index}`}
+                      key={`cell-${entry.name}`}
                       fill={COLORS[entry.name as keyof typeof COLORS]}
                     />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--background))",
+                    borderColor: "hsl(var(--border))",
+                  }}
+                />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
