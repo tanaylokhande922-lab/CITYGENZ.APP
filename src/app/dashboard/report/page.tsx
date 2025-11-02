@@ -37,6 +37,7 @@ import { useFirestore, useUser, useStorage, errorEmitter, FirestorePermissionErr
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 
 const reportFormSchema = z.object({
   category: z.string({ required_error: "Please select an issue category." }),
@@ -93,13 +94,24 @@ export default function ReportIssuePage() {
 
     try {
         const photoFile = data.photo[0];
-        const photoRef = ref(storage, `issues/${user.uid}/${Date.now()}-${photoFile.name}`);
+
+        // Compression options
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        }
         
-        // 1. Upload photo to storage
-        const uploadResult = await uploadBytes(photoRef, photoFile);
+        // 1. Compress image
+        const compressedFile = await imageCompression(photoFile, options);
+        
+        const photoRef = ref(storage, `issues/${user.uid}/${Date.now()}-${compressedFile.name}`);
+        
+        // 2. Upload compressed photo to storage
+        const uploadResult = await uploadBytes(photoRef, compressedFile);
         const photoUrl = await getDownloadURL(uploadResult.ref);
 
-        // 2. Create issue document in Firestore
+        // 3. Create issue document in Firestore
         const issueData = {
             userId: user.uid,
             category: data.category,
