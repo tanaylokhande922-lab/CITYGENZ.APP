@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Table,
@@ -17,11 +18,14 @@ import {
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type User = {
   id: string;
   email: string;
   registrationDate: string;
+  displayName?: string;
+  photoURL?: string;
 }
 
 export default function UsersPage() {
@@ -33,6 +37,15 @@ export default function UsersPage() {
   }, [firestore]);
 
   const { data: users, isLoading } = useCollection<User>(usersQuery);
+
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "U";
+    const parts = name.split(' ');
+    if (parts.length > 1) {
+        return parts[0][0] + parts[parts.length - 1][0];
+    }
+    return name.substring(0, 2);
+  }
 
   return (
     <Card>
@@ -46,6 +59,7 @@ export default function UsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Registration Date</TableHead>
               <TableHead>User ID</TableHead>
@@ -54,21 +68,33 @@ export default function UsersPage() {
           <TableBody>
             {isLoading && (
               <>
-                <TableRow>
-                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                </TableRow>
+                {[...Array(3)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  </TableRow>
+                ))}
               </>
             )}
             {users && users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.email}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={user.photoURL} />
+                      <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{user.displayName || 'N/A'}</span>
+                  </div>
+                </TableCell>
+                <TableCell>{user.email}</TableCell>
                 <TableCell>
                   {new Date(user.registrationDate).toLocaleString()}
                 </TableCell>
@@ -77,7 +103,7 @@ export default function UsersPage() {
             ))}
             {!isLoading && (!users || users.length === 0) && (
                 <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                         No users found.
                     </TableCell>
                 </TableRow>

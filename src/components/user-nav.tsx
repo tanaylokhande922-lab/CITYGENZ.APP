@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +15,7 @@ import {
 import { useAuth, useUser } from "@/firebase";
 import { LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export function UserNav() {
   const auth = useAuth();
@@ -21,13 +23,19 @@ export function UserNav() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await auth.signOut();
+    if (auth) {
+      await auth.signOut();
+    }
     router.push('/');
   };
 
-  const getInitials = (email: string | null | undefined) => {
-    if (!email) return 'U';
-    return email.substring(0, 2).toUpperCase();
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    const parts = name.split(' ');
+    if (parts.length > 1) {
+        return parts[0][0] + parts[parts.length - 1][0];
+    }
+    return name.substring(0, 2);
   }
 
   return (
@@ -35,8 +43,8 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user?.photoURL || "https://picsum.photos/seed/user-avatar/40/40"} alt={user?.displayName || 'User'} />
-            <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+            <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} />
+            <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
@@ -53,10 +61,12 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <UserIcon className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </DropdownMenuItem>
+          <Link href="/dashboard/profile" passHref>
+            <DropdownMenuItem>
+              <UserIcon className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+          </Link>
           <DropdownMenuItem>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>

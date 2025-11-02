@@ -1,3 +1,4 @@
+
 'use client';
 
 import { MainNav } from "@/components/main-nav";
@@ -30,10 +31,19 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/');
+      return;
     }
-    // If the user is not an admin and tries to access the users page, redirect them.
-    if (!isUserLoading && user && !isAdmin && pathname === '/dashboard/users') {
-        router.push('/dashboard');
+    if (!isUserLoading && user) {
+        // If user has no display name and is not on the profile page, redirect them.
+        if (!user.displayName && pathname !== '/dashboard/profile') {
+            router.push('/dashboard/profile');
+            return;
+        }
+        // If the user is not an admin and tries to access the users page, redirect them.
+        if (!isAdmin && pathname === '/dashboard/users') {
+            router.push('/dashboard');
+            return;
+        }
     }
   }, [user, isUserLoading, router, isAdmin, pathname]);
 
@@ -44,6 +54,12 @@ export default function DashboardLayout({
         </div>
     );
   }
+
+  // Do not render navigation for profile setup page
+  if (pathname === '/dashboard/profile') {
+    return <main className="flex min-h-screen flex-1 flex-col items-center justify-center p-4">{children}</main>;
+  }
+
 
   return (
     <SidebarProvider>

@@ -24,6 +24,7 @@ export default function AuthenticationPage() {
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpAadhaar, setSignUpAadhaar] = useState('');
+  const [isSigningUp, setIsSigningUp] = useState(false);
 
   const auth = useAuth();
   const firestore = useFirestore();
@@ -32,10 +33,16 @@ export default function AuthenticationPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
+    // Redirect if user is logged in and not in the middle of a signup process
+    if (user && !isSigningUp) {
+      // If the user has no display name, they need to set it up.
+      if (!user.displayName) {
+        router.push('/dashboard/profile');
+      } else {
+        router.push('/dashboard');
+      }
     }
-  }, [user, router]);
+  }, [user, router, isSigningUp]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +62,7 @@ export default function AuthenticationPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!auth || !firestore) return;
+    setIsSigningUp(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, signUpEmail, signUpPassword);
       const newUser = userCredential.user;
@@ -65,19 +73,25 @@ export default function AuthenticationPage() {
         aadhaarNumber: signUpAadhaar,
         email: newUser.email,
         registrationDate: new Date().toISOString(),
+        displayName: '', // Initialize display name
+        photoURL: '', // Initialize photo URL
       });
+
+      // Redirect to profile setup page
+      router.push('/dashboard/profile');
       
-      // Let the useEffect handle the redirect
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
         description: error.message || "An unexpected error occurred.",
       });
+    } finally {
+      setIsSigningUp(false);
     }
   };
 
-  if (isUserLoading || user) {
+  if (isUserLoading || (user && !isSigningUp)) {
     return (
         <div className="w-full h-screen flex items-center justify-center">
             <p>Loading...</p>
