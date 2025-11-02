@@ -105,16 +105,16 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-2">
-        <Card>
+      <div className="mt-4 grid gap-4 md:grid-cols-2 flex-1">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Issues by Category</CardTitle>
             <CardDescription>
               Distribution of reported issues across different categories.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="flex-1">
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={categoryChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
@@ -129,13 +129,13 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Issue Status Overview</CardTitle>
             <CardDescription>A breakdown of the current status of all issues.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="flex-1">
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={statusChartData}

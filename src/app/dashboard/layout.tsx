@@ -10,6 +10,7 @@ import {
   SidebarContent,
   SidebarInset,
   SidebarTrigger,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
@@ -40,17 +41,18 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="min-h-screen">
-        <Sidebar>
+        <Sidebar collapsible="icon">
           <SidebarHeader>
             <Logo />
           </SidebarHeader>
           <SidebarContent>
             <MainNav />
           </SidebarContent>
+          <SidebarRail />
         </Sidebar>
         <SidebarInset>
           <header className="flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6 sticky top-0 z-40">
-            <SidebarTrigger className="lg:hidden" />
+            <SidebarTrigger />
             <div className="w-full flex-1">
               {/* Add search or other header elements here if needed */}
             </div>
