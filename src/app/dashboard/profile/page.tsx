@@ -30,6 +30,8 @@ import { doc, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User as UserIcon } from "lucide-react";
+import { ProfilePictures } from "@/lib/placeholder-images";
+import { cn } from "@/lib/utils";
 
 const profileFormSchema = z.object({
   displayName: z.string().min(3, {
@@ -48,6 +50,7 @@ export default function ProfileSetupPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedPfp, setSelectedPfp] = useState(user?.photoURL || ProfilePictures[0]?.imageUrl);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -71,12 +74,13 @@ export default function ProfileSetupPage() {
         // 1. Update Auth profile
         await updateProfile(auth.currentUser, {
             displayName: data.displayName,
-            // photoURL is already set on sign up, no need to update it here unless we change it
+            photoURL: selectedPfp,
         });
         
         // 2. Update Firestore user document
         const userData = {
             displayName: data.displayName,
+            photoURL: selectedPfp,
         };
 
         setDoc(userDocRef, userData, { merge: true }).catch(error => {
@@ -125,23 +129,36 @@ export default function ProfileSetupPage() {
   }
 
   return (
-    <Card className="w-full max-w-lg">
+    <Card className="w-full max-w-2xl">
       <CardHeader>
         <CardTitle>Set Up Your Profile</CardTitle>
         <CardDescription>
-          Please add your name to complete your registration. Your profile picture has been randomly assigned.
+          Choose a profile picture and add your name to complete your registration.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="flex justify-center">
-                <Avatar className="h-24 w-24">
-                    <AvatarImage src={user?.photoURL || undefined} />
-                    <AvatarFallback className="text-3xl">
-                        {getInitials(user?.displayName) || <UserIcon size={40}/>}
-                    </AvatarFallback>
-                </Avatar>
+            <div className="space-y-4">
+                <FormLabel>Choose Your Avatar</FormLabel>
+                <div className="flex flex-wrap gap-4 justify-center">
+                    {ProfilePictures.map((pfp) => (
+                        <button
+                            type="button"
+                            key={pfp.id}
+                            onClick={() => setSelectedPfp(pfp.imageUrl)}
+                            className={cn(
+                                "rounded-full transition-all ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                selectedPfp === pfp.imageUrl ? "ring-2 ring-primary" : ""
+                            )}
+                        >
+                            <Avatar className="h-16 w-16">
+                                <AvatarImage src={pfp.imageUrl} alt={`Avatar ${pfp.id}`} />
+                                <AvatarFallback>AV</AvatarFallback>
+                            </Avatar>
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <FormField

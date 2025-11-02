@@ -13,7 +13,7 @@ import { Logo } from "@/components/logo";
 import { useState, useEffect } from "react";
 import { useAuth, useFirestore, useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -69,6 +69,13 @@ export default function AuthenticationPage() {
 
       // Randomly select a profile picture
       const randomPfp = ProfilePictures[Math.floor(Math.random() * ProfilePictures.length)];
+      
+      // Also update the auth user's profile
+      await updateProfile(newUser, {
+        photoURL: randomPfp.imageUrl,
+        displayName: '',
+      });
+
 
       // Create a user profile document in Firestore
       await setDoc(doc(firestore, "users", newUser.uid), {
