@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth, useFirestore, useStorage, useUser } from "@/firebase";
+import { useAuth, useFirestore, useStorage, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
@@ -88,9 +88,18 @@ export default function ProfileSetupPage() {
 
         // 3. Update Firestore user document
         const userDocRef = doc(firestore, "users", user.uid);
-        await updateDoc(userDocRef, {
+        const updatedData = {
             displayName: data.displayName,
             photoURL: photoURL,
+        };
+        await updateDoc(userDocRef, updatedData).catch(error => {
+            if (error.code === 'permission-denied') {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'update',
+                    requestResourceData: updatedData
+                }));
+            }
         });
         
         toast({
@@ -103,11 +112,13 @@ export default function ProfileSetupPage() {
 
     } catch (error: any) {
         console.error("Profile update error:", error);
-        toast({
-            variant: "destructive",
-            title: "Update Failed",
-            description: error.message || "An unexpected error occurred.",
-        });
+        if (error.code !== 'permission-denied') {
+            toast({
+                variant: "destructive",
+                title: "Update Failed",
+                description: error.message || "An unexpected error occurred.",
+            });
+        }
     } finally {
         setIsSubmitting(false);
     }
