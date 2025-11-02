@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from "next/image";
@@ -165,7 +166,7 @@ export default function AuthenticationPage() {
             alt={loginHeroImage.description}
             fill
             className="object-cover"
-            data-ai-hint={loginHeroeImage.imageHint}
+            data-ai-hint={loginHeroImage.imageHint}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
